@@ -58,12 +58,11 @@ fn write_output_file(config: &Config, contents: Vec<u8>) {
 fn string2array(key: String) -> [u8;32]{
   let mut result:[u8;32]= [0; 32];
   for (index, y) in key[..32].chars().enumerate() {
-        let z = (y.to_string()).parse::<u8>().unwrap() & 1;
+        let z = (y.to_string()).parse::<u8>().unwrap();
         result[index] = z;
     }
   result
 }
-//
 //
 fn state2data_block(state:&[[u16;4]]) ->[u8;16] {
   let mut result:[u8;16]=[0;16];
@@ -198,7 +197,7 @@ fn inv_sub_word(state: [[u16; 4];4]) -> [[u16; 4]; 4]{
 fn shift_rows(state: &[[u16; 4]]) -> [[u16; 4]; 4]{
     let mut result:[[u16; 4]; 4]=[[0;4];4];
     let mut t:[u16;4]=[0;4];
-    for r in 1..4 {
+    for r in 0..4 {
       for c in 0..4 {
         t[c]=state[r][(c+r)%4];
       }
@@ -212,7 +211,7 @@ fn shift_rows(state: &[[u16; 4]]) -> [[u16; 4]; 4]{
 fn inv_shift_rows(state: &[[u16; 4]]) -> [[u16; 4]; 4]{
     let mut t:[u16;4]=[0;4];
     let mut result:[[u16; 4]; 4]=[[0;4];4];
-    for r in 1..4 {
+    for r in 0..4 {
       for c in 0..4 {
         t[(c+r)%4]=state[r][c];
       }
@@ -264,16 +263,14 @@ fn key_expansion(key:[u16;32]) -> [[u16; 60]; 4]{
 } 
 */
 //
-/*
 fn rot_word(w:[u16;4]) -> [u16; 4]{
-  let result:[u16;4]=[0;4];
+  let mut result:[u16;4]=[0;4];
   result[3]=w[0];
   result[0]=w[1];
   result[1]=w[2];
   result[2]=w[3];
   result
 }
-*/
 //
 fn create_state(data:[u8;16]) ->[[u16;4];4]{
    let mut state:[[u16; 4]; 4] = [[0; 4]; 4];
@@ -297,6 +294,7 @@ fn aes_encrypt(mut input:Vec<u8>,z:[u8;32],size:usize) -> Vec<u8>{
        let x:u8 = 32;
        input.push(x.into());
    }
+   println!("key {:?}", z);
    let zz:[[u16;4];4]=[[0;4];4];//key_expansion(z);
    let mut g = 0;
    loop {
@@ -332,6 +330,7 @@ fn aes_decrypt(mut input:Vec<u8>,z:[u8;32],size:usize) -> Vec<u8>{
        let x:u8 = 32;
        input.push(x.into());
   }
+  println!("key {:?}", z);
   let zz:[[u16;4];4]=[[0;4];4];//key_expansion(z);
   let mut g=0;
   loop {
@@ -356,16 +355,6 @@ fn aes_decrypt(mut input:Vec<u8>,z:[u8;32],size:usize) -> Vec<u8>{
     g=g+16;
   }
 }
-// transforms a key/block String into an 2D array 4x4 16bytes
-/*
-fn transform(key: String) -> [[u16;4];4] {
-  let mut result:[[u16;4];4]=[[0;4];4];
-  for (index,y) in key[..256].chars().enumerate() {
-        result[index] = (y.to_string()).parse::<u16>().unwrap() & 1;
-  }
-  result
-}
-*/
 //
 fn main(){
   let args: Vec<String> = env::args().collect();
@@ -392,5 +381,60 @@ fn main(){
             write_output_file(&config, output);
         },
         _ => info(),
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_create_state() {
+       let mut block:[u8;16]=[0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3];
+       let state = create_state(block);
+       let expected:[[u16;4];4]=[[0,1,2,3],[0,1,2,3],[0,1,2,3],[0,1,2,3]];
+       assert_eq!(state,expected);
+    }
+    #[test]
+    fn test_string2array() {
+       let key = "01234567890123456789012345678901".to_string();
+       let expected:[u8;32]=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1];
+       let encryption_keys = string2array(key);
+       assert_eq!(encryption_keys,expected);
+    }
+   #[test]
+   fn test_state2data_block() {
+       let state:[[u16;4];4]=[[0,1,2,3],[0,1,2,3],[0,1,2,3],[0,1,2,3]];
+       let expected:[u8;16]=[0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3];
+       let last = state2data_block(&state);
+       assert_eq!(last,expected);
+    }
+   #[test]
+   fn test_rot_word() {
+       let word:[u16;4]=[0,1,2,3];
+       let expected:[u16;4]=[1,2,3,0];
+       let result = rot_word(word);
+       assert_eq!(result,expected);
+    }
+   #[test]
+   fn test_mix_columns() {
+        let state:[[u16;4];4]=[[0,1,2,3],[0,1,2,3],[0,1,2,3],[0,1,2,3]];
+        let mix = mix_columns(&state);
+        let unmix = inv_mix_columns(&mix);
+        assert_eq!(state,unmix);
+    }
+   #[test]
+   fn test_sub_word() {
+        let state:[[u16;4];4]=[[0,1,2,3],[0,1,2,3],[0,1,2,3],[0,1,2,3]];
+        let mix = sub_word(state);
+        let unmix = inv_sub_word(mix);
+        assert_eq!(state,unmix);
+    }
+   #[test]
+   fn test_shift_rows() {
+        let state:[[u16;4];4]=[[0,1,2,3],[0,1,2,3],[0,1,2,3],[0,1,2,3]];
+        let mix = shift_rows(&state);
+        let unmix = inv_shift_rows(&mix);
+        assert_eq!(state,unmix);
     }
 }
