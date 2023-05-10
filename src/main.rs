@@ -544,7 +544,7 @@ mod tests {
    #[test]
    fn test_key_expansion() {
         let state:[[u16;4];4]=[[0,1,2,3],[0,1,2,3],[0,1,2,3],[0,1,2,3]];
-        let ke = key_expansion(state);
-        //assert_eq!(ke,key);
+        let expanded = key_expansion(state);
+        assert_eq!(expanded[0],state);
     }
 }
