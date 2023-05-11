@@ -3,7 +3,7 @@ use std::env;
 use std::process;
 use std::fs;
 use std::fs::File;
-use std::io::prelude::*;
+use std::io::Write;
 //
 pub struct Config {
     pub mode: String,
@@ -57,10 +57,8 @@ fn write_output_file(config: &Config, contents: Vec<u8>) {
 //
 fn string2array(key: String) -> [u8;32]{
   let mut result:[u8;32]= [0; 32];
-  for (index, y) in key[..32].chars().enumerate() {
-        let z = (y.to_string()).parse::<u8>().unwrap();
-        result[index] = z;
-    }
+  let mut test: &mut[u8] = &mut result;
+  test.write(key.as_bytes()).unwrap(); 
   result
 }
 //
@@ -236,16 +234,6 @@ fn add_round_key(state: &[[u16; 4]], w:[[[u16; 4];4];16],keycount:usize) -> [[u1
      result
 }
 //
-fn inv_add_round_key(state: &[[u16; 4]],w:[[[u16; 4];4];16] ,keycount:usize ) -> [[u16;4];4] {
-     let mut result:[[u16;4];4]=[[0;4];4];
-     for c in (0..3).rev() { 
-       for r in (0..3).rev() {
-         result[r][c]=state[r][c]^w[keycount][r][c];
-       }
-     }
-    result
-}
-//
 fn sub_word(word: [u16; 4]) -> [u16; 4]{
   let s:[u16;256]=[  
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
@@ -419,18 +407,28 @@ fn aes_encrypt(mut input:Vec<u8>,z:[u8;32],size:usize) -> Vec<u8>{
    loop {
      if w<16 { return result; }
      block = input[g..(g+16)].try_into().unwrap(); // block of 16 bytes = 128 bits
+     println!("input:{:?}",block);
      let mut state = create_state(block); 
-     let mut ark=add_round_key(&state,zz,0);
+     println!("start:{:?}",state);
+     state=add_round_key(&state,zz,0);
+     println!("add_round_key:{:?}",state);
      for i in 1..14 {
-       let sw = sub_bytes(ark);
-       let sr = shift_rows(&sw);
-       let mc = mix_columns(&sr);
-       state = add_round_key(&mc,zz,i);
+       state = sub_bytes(state);
+       println!("sub_bytes:{:?}",state);
+       state = shift_rows(&state);
+       println!("shift_rows:{:?}",state);
+       state = mix_columns(&state);
+       println!("mix_columns:{:?}",state);
+       state = add_round_key(&state,zz,i);
+       println!("add_round_key:{:?}",state);
      }
-     let sw = sub_bytes(state);
-     let sr = shift_rows(&sw);
-     ark = add_round_key(&sr,zz,14);
-     let last = state2data_block(&ark);
+     state = sub_bytes(state);
+     println!("sub_bytes:{:?}",state);
+     state = shift_rows(&state);
+     println!("shift_rows:{:?}",state);
+     state = add_round_key(&state,zz,14);
+     println!("add_round_key:{:?}",state);
+     let last = state2data_block(&state);
      result.extend(last.to_vec().iter().copied());
      w=w-16;
      g=g+16;
@@ -446,23 +444,34 @@ fn aes_decrypt(mut input:Vec<u8>,z:[u8;32],size:usize) -> Vec<u8>{
        let x:u8 = 32;
        input.push(x.into());
   }
+  println!("key:{:?}",z);
   let zz = key_expansion(z);
+  println!("key_expansion:{:?}",zz);
   let mut g = 0;
   loop {
     if w<16 { return result; }
     block = input[g..(g+16)].try_into().unwrap(); // block of 16 bytes = 128 bits
     let mut state = create_state(block);
-    let mut ark = inv_add_round_key(&state,zz,14);
+    println!("create_state:{:?}",state);
+    state = add_round_key(&state,zz,14);
+    println!("add_round_key:{:?}",state);
     for i in (0..13).rev() {
-      let isr = inv_shift_rows(&ark);
-      let isw = inv_sub_bytes(isr);
-      ark = inv_add_round_key(&isw,zz,i);
-      state = inv_mix_columns(&ark);
+      state = inv_shift_rows(&state);
+      println!("inv_shift_rows:{:?}",state);
+      state = inv_sub_bytes(state);
+      println!("inv_sub_bytes:{:?}",state);
+      state = add_round_key(&state,zz,i);
+      println!("add_round_key:{:?}",state);
+      state = inv_mix_columns(&state);
+      println!("inv_mix_columns:{:?}",state);
     } 
-    let isr = inv_shift_rows(&state);
-    let isw = inv_sub_bytes(isr);
-    let iark = inv_add_round_key(&isw,zz,0);
-    let last = state2data_block(&iark);
+    state = inv_shift_rows(&state);
+    println!("inv_shift_rows:{:?}",state);
+    state = inv_sub_bytes(state);
+    println!("inv_sub_bytes:{:?}",state);
+    state = add_round_key(&state,zz,0);
+    println!("add_round_key:{:?}",state);
+    let last = state2data_block(&state);
     result.extend(last.to_vec().iter().copied());
     w=w-16;
     g=g+16;
@@ -511,7 +520,7 @@ mod tests {
     #[test]
     fn test_string2array() {
        let key = "01234567890123456789012345678901".to_string();
-       let expected:[u8;32]=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1];
+       let expected:[u8;32]=[48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 49];
        let encryption_keys = string2array(key);
        assert_eq!(encryption_keys,expected);
     }
