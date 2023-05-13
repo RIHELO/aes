@@ -62,7 +62,7 @@ fn string2array(key: String) -> [u8;32]{
   result
 }
 //
-fn state2data_block(state:&[[u8;4]]) ->[u8;16] {
+fn state2data_block(state:[[u8;4];4]) ->[u8;16] {
   let mut result:[u8;16]=[0;16];
   let mut k:usize=0;
   for i in 0..4 {
@@ -194,7 +194,7 @@ fn gmul(a:u8,b:u8) -> u8{
     }
 }
 //
-fn mix_columns(s: &[[u8; 4]]) -> [[u8; 4]; 4]{
+fn mix_columns(s:[[u8;4];4]) -> [[u8; 4]; 4]{
     let mut sp:[u8;4]=[0;4];
     let mut result:[[u8; 4]; 4]=[[0;4];4];
     for c in 0..4 {
@@ -210,7 +210,7 @@ fn mix_columns(s: &[[u8; 4]]) -> [[u8; 4]; 4]{
     result
 }
 //
-fn inv_mix_columns(s: &[[u8; 4]]) -> [[u8; 4]; 4]{
+fn inv_mix_columns(s:[[u8;4];4]) -> [[u8; 4]; 4]{
     let mut sp:[u8;8]=[0;8];
     let mut result:[[u8; 4]; 4]=[[0;4];4];
     for c in 0..4 {
@@ -226,7 +226,7 @@ fn inv_mix_columns(s: &[[u8; 4]]) -> [[u8; 4]; 4]{
     result
 }
 //
-fn add_round_key(state: &[[u8; 4]], w:[[[u8; 4];4];16],keycount:usize) -> [[u8;4];4] {
+fn add_round_key(state:[[u8; 4];4] , w:[[[u8; 4];4];16],keycount:usize) -> [[u8;4];4] {
      let mut result:[[u8;4];4]=[[0;4];4];
      for c in 0..4 {
        for r in 0..4 {
@@ -304,35 +304,41 @@ fn inv_sub_bytes(state:[[u8; 4]; 4]) -> [[u8; 4]; 4] {
   result
 }
 //
-fn shift_rows(state: &[[u8; 4]]) -> [[u8; 4]; 4]{
+fn shift_rows(state:[[u8;4];4]) -> [[u8; 4]; 4]{
     let mut result:[[u8; 4]; 4]=[[0;4];4];
-    let mut t:[u8;4]=[0;4];
     for r in 0..4 {
       for c in 0..4 {
-        t[c]=state[r][(c+r)%4];
-      }
-      for c in 0..4 {
-        result[r][c]=t[c];
+        result[r][c]=state[r][(c+r)%4];
       }
     }
     result
 }
 //
-fn inv_shift_rows(state: &[[u8; 4]]) -> [[u8; 4]; 4]{
-    let mut t:[u8;4]=[0;4];
+fn inv_shift_rows(state:[[u8;4];4]) -> [[u8; 4]; 4]{
     let mut result:[[u8; 4]; 4]=[[0;4];4];
-    for r in 0..4 {
-      for c in 0..4 {
-        t[(c+r)%4]=state[r][c];
-      }
-      for c in 0..4 {
-        result[r][c]=t[c];
-      }
-    }
+    result[0][0]=state[0][0];
+    result[0][1]=state[0][1];
+    result[0][2]=state[0][2];
+    result[0][3]=state[0][3];
+
+    result[1][0]=state[1][3];
+    result[1][1]=state[1][0];
+    result[1][2]=state[1][1];
+    result[1][3]=state[1][2];
+
+    result[2][0]=state[2][2];
+    result[2][1]=state[2][3];
+    result[2][2]=state[2][0];
+    result[2][3]=state[2][1];
+    
+    result[3][0]=state[3][1];
+    result[3][1]=state[3][2];
+    result[3][2]=state[3][3];
+    result[3][3]=state[3][0];
     result
 }
 //
-fn key_expansion(key:[u8; 32]) -> [[[u8; 4]; 4]; 16]{ 
+fn key_expansion(key:[u8; 32]) -> [[[u8; 4] ;4]; 16]{ 
   let rcon:[u8;256]=[
     0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36, 0x6c, 0xd8, 0xab, 0x4d, 0x9a, 
     0x2f, 0x5e, 0xbc, 0x63, 0xc6, 0x97, 0x35, 0x6a, 0xd4, 0xb3, 0x7d, 0xfa, 0xef, 0xc5, 0x91, 0x39, 
@@ -352,26 +358,21 @@ fn key_expansion(key:[u8; 32]) -> [[[u8; 4]; 4]; 16]{
     0x61, 0xc2, 0x9f, 0x25, 0x4a, 0x94, 0x33, 0x66, 0xcc, 0x83, 0x1d, 0x3a, 0x74, 0xe8, 0xcb, 0x8d
   ];
 
-  let mut w:[[[u8; 4]; 4]; 16] = [[[0; 4]; 4]; 16];
-  w[0][0]=[ key[0] as u8, key[1] as u8, key[2] as u8, key[3] as u8 ];  
-  w[0][1]=[ key[4] as u8, key[5] as u8, key[6] as u8, key[7] as u8 ];  
-  w[0][2]=[ key[8] as u8, key[9] as u8, key[10] as u8, key[11] as u8 ];  
-  w[0][3]=[ key[12] as u8, key[13] as u8, key[14] as u8, key[15] as u8 ];  
-
-  w[1][0]=[ key[16] as u8, key[17] as u8, key[18] as u8, key[19] as u8 ];                  
-  w[1][1]=[ key[20] as u8, key[21] as u8, key[22] as u8, key[23] as u8 ];                  
-  w[1][2]=[ key[24] as u8, key[25] as u8, key[26] as u8, key[27] as u8 ];                
-  w[1][3]=[ key[28] as u8, key[29] as u8, key[30] as u8, key[31] as u8 ];  
-  for i in 2..16{
-    for r in 0..4{
-      let tmp = [ w[i-1][r][0], w[i-1][r][1], w[i-1][r][2], w[i-1][r][3] ];
-      let sw = sub_word(rot_word(tmp));
-      for c in 0..4{
-        w[i][r][c]=w[i][r][c] ^ rcon[ sw[c] as usize];
-      }
+  let mut w:[[u8; 4]; 60] = [[0; 4]; 60];
+  for i in 0..8 {
+    w[i]=[ key[4*i] as u8, key[4*i+1] as u8, key[4*i+2] as u8, key[4*i+3] as u8 ];
+  }
+  for i in 8..60 {
+    let tmp = sub_word(  rot_word([ w[i][0], w[i][1], w[i][2], w[i][3] ]) );
+    for x in 0..4{
+      w[i][x]=w[i/8 as usize][x] ^ rcon[ tmp[x] as usize];
     }
   }
-  w
+  let mut keys:[[[u8; 4]; 4]; 16] = [[[0; 4] ;4]; 16];
+  for x in 0..15{
+    keys[x]=[w[4*x],w[4*x+1],w[4*x+2],w[4*x+3]];
+  }
+  keys
 } 
 //
 fn rot_word(w:[u8;4]) -> [u8; 4]{
@@ -414,25 +415,25 @@ fn aes_encrypt(mut input:Vec<u8>,z:[u8;32],size:usize) -> Vec<u8>{
      println!("input:{:?}",block);
      let mut state = create_state(block); 
      println!("start:{:?}",state);
-     state=add_round_key(&state,zz,0);
+     state=add_round_key(state,zz,0);
      println!("add_round_key:{:?}",state);
      for i in 1..14 {
        state = sub_bytes(state);
        println!("sub_bytes:{:?}",state);
-       state = shift_rows(&state);
+       state = shift_rows(state);
        println!("shift_rows:{:?}",state);
-       state = mix_columns(&state);
+       state = mix_columns(state);
        println!("mix_columns:{:?}",state);
-       state = add_round_key(&state,zz,i);
+       state = add_round_key(state,zz,i);
        println!("add_round_key:{:?}",state);
      }
      state = sub_bytes(state);
      println!("sub_bytes:{:?}",state);
-     state = shift_rows(&state);
+     state = shift_rows(state);
      println!("shift_rows:{:?}",state);
-     state = add_round_key(&state,zz,14);
+     state = add_round_key(state,zz,14);
      println!("add_round_key:{:?}",state);
-     let last = state2data_block(&state);
+     let last = state2data_block(state);
      println!("last:{:?}",last);
      result.extend(last.to_vec().iter().copied());
      w=w-16;
@@ -459,25 +460,25 @@ fn aes_decrypt(mut input:Vec<u8>,z:[u8;32],size:usize) -> Vec<u8>{
     println!("block:{:?}",block);
     let mut state = create_state(block);
     println!("create_state:{:?}",state);
-    state = add_round_key(&state,zz,14);
+    state = add_round_key(state,zz,14);
     println!("add_round_key:{:?}",state);
     for i in (0..13).rev() {
-      state = inv_shift_rows(&state);
+      state = inv_shift_rows(state);
       println!("inv_shift_rows:{:?}",state);
       state = inv_sub_bytes(state);
       println!("inv_sub_bytes:{:?}",state);
-      state = add_round_key(&state,zz,i);
+      state = add_round_key(state,zz,i);
       println!("add_round_key:{:?}",state);
-      state = inv_mix_columns(&state);
+      state = inv_mix_columns(state);
       println!("inv_mix_columns:{:?}",state);
     } 
-    state = inv_shift_rows(&state);
+    state = inv_shift_rows(state);
     println!("inv_shift_rows:{:?}",state);
     state = inv_sub_bytes(state);
     println!("inv_sub_bytes:{:?}",state);
-    state = add_round_key(&state,zz,0);
+    state = add_round_key(state,zz,0);
     println!("add_round_key:{:?}",state);
-    let last = state2data_block(&state);
+    let last = state2data_block(state);
     println!("last:{:?}",last);
     result.extend(last.to_vec().iter().copied());
     w=w-16;
@@ -535,7 +536,7 @@ mod tests {
    fn test_state2data_block() {
        let state:[[u8;4];4]=[[0,1,2,3],[0,1,2,3],[0,1,2,3],[0,1,2,3]];
        let expected:[u8;16]=[0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3];
-       let last = state2data_block(&state);
+       let last = state2data_block(state);
        assert_eq!(last,expected);
     }
    #[test]
@@ -548,8 +549,8 @@ mod tests {
    #[test]
    fn test_mix_columns() {
         let state:[[u8;4];4]=[[0xdb, 0x13, 0x53, 0x45],[0xf2, 0x0a, 0x22, 0x5c],[0x01, 0x01, 0x01, 0x01],[0xc6,0xc6,0xc6,0xc6]];
-        let mix = mix_columns(&state);
-        let unmix = inv_mix_columns(&mix);
+        let mix = mix_columns(state);
+        let unmix = inv_mix_columns(mix);
         assert_eq!(state,unmix);
     }
    #[test]
@@ -562,8 +563,8 @@ mod tests {
    #[test]
    fn test_shift_rows() {
         let state:[[u8;4];4]=[[0,1,2,3],[0,1,2,3],[0,1,2,3],[0,1,2,3]];
-        let mix = shift_rows(&state);
-        let unmix = inv_shift_rows(&mix);
+        let mix = shift_rows(state);
+        let unmix = inv_shift_rows(mix);
         assert_eq!(state,unmix);
     }
    #[test]
