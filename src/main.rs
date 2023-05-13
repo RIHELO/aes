@@ -52,7 +52,7 @@ fn write_output_file(config: &Config, contents: Vec<u8>) {
        file.write_all(&value.to_le_bytes()).unwrap();
        size = index;
     }
-    println!("Output file {} with size {}",&config.output_file_path,size*2);
+    println!("Output file {} with size {}",&config.output_file_path,size);
 }
 //
 fn string2array(key: String) -> [u8;32]{
@@ -195,33 +195,23 @@ fn gmul(a:u8,b:u8) -> u8{
 }
 //
 fn mix_columns(s:[[u8;4];4]) -> [[u8; 4]; 4]{
-    let mut sp:[u8;4]=[0;4];
     let mut result:[[u8; 4]; 4]=[[0;4];4];
     for c in 0..4 {
-       sp[0]= gmul(0x02,s[0][c])^gmul(0x03,s[1][c])^s[2][c]^s[3][c];
-       sp[1]= s[0][c]^ gmul(0x02,s[1][c])^(0x03|s[2][c])^s[3][c];
-       sp[2]= s[0][c]^ s[1][c]^ gmul(0x02,s[2][c])^gmul(0x03,s[3][c]);
-       sp[3]= gmul(0x03,s[0][c])^s[1][c]^s[2][c] ^gmul(0x02,s[3][c]);
-
-       for i in 0..4 {
-         result[i][c]=sp[i];
-       }
+       result[c][0]= gmul(2,s[c][0])^gmul(3,s[c][1])^s[c][2]^s[c][3];
+       result[c][1]= s[c][0]^ gmul(2,s[c][1])^gmul(3,s[c][2])^s[c][3];
+       result[c][2]= s[c][0]^ s[c][1]^ gmul(2,s[c][2])^gmul(3,s[c][3]);
+       result[c][3]= gmul(3,s[c][0])^s[c][1]^s[c][2] ^gmul(2,s[c][3]);
     }
     result
 }
 //
 fn inv_mix_columns(s:[[u8;4];4]) -> [[u8; 4]; 4]{
-    let mut sp:[u8;8]=[0;8];
     let mut result:[[u8; 4]; 4]=[[0;4];4];
     for c in 0..4 {
-       sp[0]= gmul(0x0e, s[0][c])^gmul(0x0b, s[1][c])^gmul(0x0d,s[2][c])^gmul(0x09,s[3][c]);
-       sp[1]= gmul(0x09, s[0][c])^gmul(0x0e, s[1][c])^gmul(0x0b,s[2][c])^gmul(0x0d,s[3][c]);
-       sp[2]= gmul(0x0d, s[0][c])^gmul(0x09, s[1][c])^gmul(0x0e,s[2][c])^gmul(0x0b,s[3][c]);
-       sp[3]= gmul(0x0b, s[0][c])^gmul(0x0d, s[1][c])^gmul(0x09,s[2][c])^gmul(0x0e,s[3][c]);
-
-       for i in 0..4 {
-         result[i][c]=sp[i];
-       }
+       result[c][0]= gmul(0x0e, s[c][0])^gmul(0x0b, s[c][1])^gmul(0x0d,s[c][2])^gmul(0x09,s[c][3]); 
+       result[c][1]= gmul(0x09, s[c][0])^gmul(0x0e, s[c][1])^gmul(0x0b,s[c][2])^gmul(0x0d,s[c][3]); 
+       result[c][2]= gmul(0x0d, s[c][0])^gmul(0x09, s[c][1])^gmul(0x0e,s[c][2])^gmul(0x0b,s[c][3]);
+       result[c][3]= gmul(0x0b, s[c][0])^gmul(0x0d, s[c][1])^gmul(0x09,s[c][2])^gmul(0x0e,s[c][3]);
     }
     result
 }
@@ -230,7 +220,7 @@ fn add_round_key(state:[[u8; 4];4] , w:[[[u8; 4];4];16],keycount:usize) -> [[u8;
      let mut result:[[u8;4];4]=[[0;4];4];
      for c in 0..4 {
        for r in 0..4 {
-         result[r][c]=state[r][c]^w[keycount][r][c];
+         result[c][r]=state[c][r]^w[keycount][c][r];
        }
      }
      result
@@ -264,8 +254,8 @@ fn sub_word(word: [u8; 4]) -> [u8; 4]{
 //
 fn sub_bytes(state:[[u8; 4]; 4]) -> [[u8; 4]; 4] {
   let mut result:[[u8; 4]; 4]=[[0;4];4];
-  for x in 0..4 {
-     result[x]=sub_word(state[x]);
+  for col in 0..4 {
+     result[col]=sub_word(state[col]);
   }
   result
 }
@@ -298,8 +288,8 @@ fn inv_sub_word(word: [u8; 4]) -> [u8; 4]{
 //
 fn inv_sub_bytes(state:[[u8; 4]; 4]) -> [[u8; 4]; 4] {
   let mut result:[[u8; 4]; 4]=[[0;4];4];
-  for x in 0..4 {
-     result[x]=inv_sub_word(state[x]);
+  for c in 0..4 {
+     result[c]=inv_sub_word(state[c]);
   }
   result
 }
@@ -308,12 +298,12 @@ fn shift_rows(state:[[u8;4];4]) -> [[u8; 4]; 4]{
     let mut result:[[u8; 4]; 4]=[[0;4];4];
     for r in 0..4 {
       for c in 0..4 {
-        result[r][c]=state[r][(c+r)%4];
+        result[c][r]=state[c][(c+r)%4];
       }
     }
     result
 }
-//
+
 fn inv_shift_rows(state:[[u8;4];4]) -> [[u8; 4]; 4]{
     let mut result:[[u8; 4]; 4]=[[0;4];4];
     result[0][0]=state[0][0];
@@ -369,7 +359,7 @@ fn key_expansion(key:[u8; 32]) -> [[[u8; 4] ;4]; 16]{
     }
   }
   let mut keys:[[[u8; 4]; 4]; 16] = [[[0; 4] ;4]; 16];
-  for x in 0..15{
+  for x in 0..14{
     keys[x]=[w[4*x],w[4*x+1],w[4*x+2],w[4*x+3]];
   }
   keys
@@ -406,8 +396,8 @@ fn aes_encrypt(mut input:Vec<u8>,z:[u8;32],size:usize) -> Vec<u8>{
        input.push(x.into());
    }
    println!("key:{:?}",z); 
-   let zz=key_expansion(z);
-   println!("key_expansion:{:?}",zz);
+   let keys=key_expansion(z);
+   println!("key_expansion:{:?}",keys);
    let mut g = 0;
    loop {
      if w<16 { return result; }
@@ -415,7 +405,7 @@ fn aes_encrypt(mut input:Vec<u8>,z:[u8;32],size:usize) -> Vec<u8>{
      println!("input:{:?}",block);
      let mut state = create_state(block); 
      println!("start:{:?}",state);
-     state=add_round_key(state,zz,0);
+     state=add_round_key(state,keys,0);
      println!("add_round_key:{:?}",state);
      for i in 1..14 {
        state = sub_bytes(state);
@@ -424,14 +414,14 @@ fn aes_encrypt(mut input:Vec<u8>,z:[u8;32],size:usize) -> Vec<u8>{
        println!("shift_rows:{:?}",state);
        state = mix_columns(state);
        println!("mix_columns:{:?}",state);
-       state = add_round_key(state,zz,i);
+       state = add_round_key(state,keys,i);
        println!("add_round_key:{:?}",state);
      }
      state = sub_bytes(state);
      println!("sub_bytes:{:?}",state);
      state = shift_rows(state);
      println!("shift_rows:{:?}",state);
-     state = add_round_key(state,zz,14);
+     state = add_round_key(state,keys,14);
      println!("add_round_key:{:?}",state);
      let last = state2data_block(state);
      println!("last:{:?}",last);
@@ -451,8 +441,8 @@ fn aes_decrypt(mut input:Vec<u8>,z:[u8;32],size:usize) -> Vec<u8>{
        input.push(x.into());
   }
   println!("key:{:?}",z);
-  let zz = key_expansion(z);
-  println!("key_expansion:{:?}",zz);
+  let keys = key_expansion(z);
+  println!("key_expansion:{:?}",keys);
   let mut g = 0;
   loop {
     if w<16 { return result; }
@@ -460,14 +450,14 @@ fn aes_decrypt(mut input:Vec<u8>,z:[u8;32],size:usize) -> Vec<u8>{
     println!("block:{:?}",block);
     let mut state = create_state(block);
     println!("create_state:{:?}",state);
-    state = add_round_key(state,zz,14);
+    state = add_round_key(state,keys,14);
     println!("add_round_key:{:?}",state);
     for i in (0..13).rev() {
       state = inv_shift_rows(state);
       println!("inv_shift_rows:{:?}",state);
       state = inv_sub_bytes(state);
       println!("inv_sub_bytes:{:?}",state);
-      state = add_round_key(state,zz,i);
+      state = add_round_key(state,keys,i);
       println!("add_round_key:{:?}",state);
       state = inv_mix_columns(state);
       println!("inv_mix_columns:{:?}",state);
@@ -476,7 +466,7 @@ fn aes_decrypt(mut input:Vec<u8>,z:[u8;32],size:usize) -> Vec<u8>{
     println!("inv_shift_rows:{:?}",state);
     state = inv_sub_bytes(state);
     println!("inv_sub_bytes:{:?}",state);
-    state = add_round_key(state,zz,0);
+    state = add_round_key(state,keys,0);
     println!("add_round_key:{:?}",state);
     let last = state2data_block(state);
     println!("last:{:?}",last);
@@ -547,32 +537,37 @@ mod tests {
        assert_eq!(result,expected);
     }
    #[test]
-   fn test_mix_columns() {
-        let state:[[u8;4];4]=[[0xdb, 0x13, 0x53, 0x45],[0xf2, 0x0a, 0x22, 0x5c],[0x01, 0x01, 0x01, 0x01],[0xc6,0xc6,0xc6,0xc6]];
-        let mix = mix_columns(state);
-        let unmix = inv_mix_columns(mix);
-        assert_eq!(state,unmix);
+   fn test_mix_unmix_columns() {
+       let state:[[u8;4];4]=[[0xdb, 0x13, 0x53, 0x45],[0xf2, 0x0a, 0x22, 0x5c],[0x01, 0x01, 0x01, 0x01],[0xc6,0xc6,0xc6,0xc6]];
+       let mix = mix_columns(state);
+       let expected = [[142, 77, 161, 188],[159, 220, 88, 157],[1,1,1,1],[198,198,198,198]];
+       let unmix = inv_mix_columns(mix);
+       assert_eq!(mix,expected);
+       assert_eq!(unmix,state);
     }
    #[test]
    fn test_sub_word() {
-        let word:[u8;4]=[0,1,2,3];
-        let mix = sub_word(word);
-        let unmix = inv_sub_word(mix);
-        assert_eq!(word,unmix);
+       let word:[u8;4]=[0,1,2,3];
+       let mix = sub_word(word);
+       let unmix = inv_sub_word(mix);
+       assert_eq!(word,unmix);
     }
    #[test]
    fn test_shift_rows() {
-        let state:[[u8;4];4]=[[0,1,2,3],[0,1,2,3],[0,1,2,3],[0,1,2,3]];
-        let mix = shift_rows(state);
-        let unmix = inv_shift_rows(mix);
-        assert_eq!(state,unmix);
+       let state:[[u8;4];4]=[[0,1,2,3],[0,1,2,3],[0,1,2,3],[0,1,2,3]];
+       let mix = shift_rows(state);
+       let unmix = inv_shift_rows(mix);
+       assert_eq!(state,unmix);
     }
    #[test]
    fn test_key_expansion() {
-        let key:[u8;32]=[0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3];
-        let expanded = key_expansion(key);
-        println!("{:?}",expanded);
-        let expected:[u8;4] = [0,1,2,3];
-        assert_eq!(expanded[0][0],expected);
+       let key:[u8;32]=[0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3];
+       let expanded = key_expansion(key);
+       println!("{:?}",expanded);
+       let expected:[u8;4] = [0,1,2,3];
+       assert_eq!(expanded[0][0],expected);
+       assert_eq!(expanded[0][1],expected);
+       assert_eq!(expanded[0][2],expected);
+       assert_eq!(expanded[0][3],expected);
     }
 }
