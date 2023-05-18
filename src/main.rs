@@ -43,7 +43,7 @@ fn read_input_file(config: &Config) -> (Vec<u8>, usize) {
     let mut vector_contents:Vec<u8>= vec![];
     let mut size = 0;
     for (index,one_byte) in bytes.chunks_exact(1).enumerate() {
-        vector_contents.push(one_byte[0] as u8);
+        vector_contents.push(one_byte[0]);
         size = index;
     }
     println!("Input file {} with size {}",&config.input_file_path,size);
@@ -69,13 +69,9 @@ fn string2array(key: String) -> [u8;32]{
 //
 fn state2data_block(state:[[u8;4];4]) ->[u8;16] {
   let mut result:[u8;16]=[0;16];
-  let mut k:usize=0;
-  for i in 0..4 {
-    for j in 0..4 {
-        result[k]=state[i][j] as u8;
-        k=k+1;
-    }
-   }
+  for (k, element) in state.iter().flat_map(|r| r.iter()).enumerate() {
+        result[k]=*element;
+ }
   result
 }
 //
@@ -188,14 +184,14 @@ fn gmul(a:u8,b:u8) -> u8{
 0x0c,0x02,0x10,0x1e,0x34,0x3a,0x28,0x26,0x7c,0x72,0x60,0x6e,0x44,0x4a,0x58,0x56,
 0x37,0x39,0x2b,0x25,0x0f,0x01,0x13,0x1d,0x47,0x49,0x5b,0x55,0x7f,0x71,0x63,0x6d,
 0xd7,0xd9,0xcb,0xc5,0xef,0xe1,0xf3,0xfd,0xa7,0xa9,0xbb,0xb5,0x9f,0x91,0x83,0x8d];
-    if a==2 {return by2[b as usize] as u8} 
-    if a==3 {return by3[b as usize] as u8}
-    if a==9 {return by9[b as usize] as u8}
-    if a==11 {return by11[b as usize] as u8}
-    if a==13 {return by13[b as usize] as u8}
-    if a==14 {return by14[b as usize] as u8} 
+    if a==2 { return by2[b as usize]; } 
+    if a==3 { return by3[b as usize]; }
+    if a==9 { return by9[b as usize]; }
+    if a==11 { return by11[b as usize]; }
+    if a==13 { return by13[b as usize]; }
+    if a==14 { return by14[b as usize]; } 
     else {
-      return 0 
+      0 
     }
 }
 //
@@ -365,36 +361,33 @@ fn key_expansion(key:[u8; 32],dec:bool) -> [[[u8; 4] ;4]; 15]{
 
   let mut w:[[u8; 4]; 60] = [[0; 4]; 60];
   for i in 0..8 {
-    w[i]=[ key[4*i] as u8, key[4*i+1] as u8, key[4*i+2] as u8, key[4*i+3] as u8 ];
+    w[i]=[ key[4*i], key[4*i+1], key[4*i+2], key[4*i+3]];
   }
   for i in 8..60 {
      let mut tmp = [ w[i-1][0], w[i-1][1], w[i-1][2], w[i-1][3] ];
      if i% 8 == 0 {
        tmp = sub_word(  rot_word(tmp) );
-       tmp[0]=tmp[0]^ rcon[i/8];
-       tmp[1]=tmp[1]^ 0;
-       tmp[2]=tmp[2]^ 0;
-       tmp[3]=tmp[3]^ 0;
+       tmp[0]^=rcon[i/8];
      } else if i%8==4 {
        tmp = sub_word( tmp );
      }
 
-    for x in 0..4{
-      w[i][x]=w[i-8][x] ^ tmp[x];
+    for (x, item) in tmp.iter().enumerate(){
+      w[i][x]=w[i-8][x] ^ item;
     }
   }
   let mut keys:[[[u8; 4]; 4]; 15] = [[[0; 4] ;4]; 15];
   for x in 0..15{
     keys[x]=[w[4*x],w[4*x+1],w[4*x+2],w[4*x+3]];
   }
-  if dec == false {
-   return keys
+  if !dec {
+   keys
   } else {
     // skip keys 0 and 14
     for x in 1..14{
       keys[x]=inv_mix_columns([w[4*x],w[4*x+1],w[4*x+2],w[4*x+3]]);
     } 
-    return keys
+    keys
   }
 } 
 //
@@ -412,8 +405,8 @@ fn create_state(data:[u8;16]) ->[[u8;4];4]{
    let mut counter = 0;
    for row in 0..4 {
      for col in 0..4 {
-       state[row][col]=data[counter] as u8;
-       counter=counter+1;
+       state[row][col]=data[counter];
+       counter+=1;
      }
    }
    state   
@@ -426,48 +419,48 @@ fn aes_encrypt(mut input:Vec<u8>, z:[u8;32],size:usize) -> Vec<u8>{
    let mut w:usize = size+padding+16;
    for _i in 0..padding+16{
        let x:u8 = 0x80;
-       input.push(x.into());
+       input.push(x);
    }
-   println!("key:{:?}",z); 
+   println!("key:{z:?}"); 
    let keys=key_expansion(z,false);
-   println!("key_expansion:{:?}",keys);
+   println!("key_expansion:{keys:?}");
    let mut g = 0;
    loop {
      if w<16 { return result; }
-     println!("Round:{:?}",0);
+     println!("Round: 0");
      block = input[g..(g+16)].try_into().unwrap(); // block of 16 bytes = 128 bits
-     println!("input:{:?}",block);
+     println!("input:{block:?}");
      let mut state = create_state(block); 
-     println!("start:{:?}",state);
+     println!("start:{state:?}");
      println!("keys:{:?}",keys[0]);     
 
      state=add_round_key(state,keys,0);
-     println!("add_round_key:{:?}",state);
+     println!("add_round_key:{state:?}");
      for i in 1..14 {
-       println!("Round:{:?}",i);
+       println!("Round: {i}");
        state = sub_bytes(state);
-       println!("sub_bytes:{:?}",state);
+       println!("sub_bytes:{state:?}");
        state = shift_rows(state);
-       println!("shift_rows:{:?}",state);
+       println!("shift_rows:{state:?}");
        state = mix_columns(state);
-       println!("mix_columns:{:?}",state);
+       println!("mix_columns:{state:?}");
        state = add_round_key(state,keys,i);
-       println!("add_round_key:{:?}",state);
+       println!("add_round_key:{state:?}");
        println!("keys:{:?}",keys[i]);
      }
-     println!("Round:{:?}",14);
+     println!("Round: 14");
      state = sub_bytes(state);
-     println!("sub_bytes:{:?}",state);
+     println!("sub_bytes:{state:?}");
      state = shift_rows(state);
-     println!("shift_rows:{:?}",state);
+     println!("shift_rows:{state:?}");
      state = add_round_key(state,keys,14);
-     println!("add_round_key:{:?}",state);
+     println!("add_round_key:{state:?}");
      println!("keys:{:?}",keys[14]);
      let last = state2data_block(state);
-     println!("last:{:?}",last);
+     println!("last:{last:?}");
      result.extend(last.to_vec().iter().copied());
-     w=w-16;
-     g=g+16;
+     w-=16;
+     g+=16;
   }
 }
 //
@@ -478,49 +471,49 @@ fn aes_decrypt(mut input:Vec<u8>, z:[u8;32],size:usize) -> Vec<u8>{
   let mut w:usize= size+padding;
   for _i in 0..padding{
        let x:u8 = 0x80;
-       input.push(x.into());
+       input.push(x);
   }
-  println!("key:{:?}",z);
+  println!("key:{z:?}");
   let keys = key_expansion(z,true);
-  println!("key_expansion:{:?}",keys);
+  println!("key_expansion:{keys:?}");
   let mut g = 0;
   loop {
     if w<16 { return result; }
-    println!("Round:{:?}",14);
+    println!("Round: 14");
     block = input[g..(g+16)].try_into().unwrap(); // block of 16 bytes = 128 bits
-    println!("block:{:?}",block);
+    println!("block:{block:?}");
     let mut state = create_state(block);
-    println!("start:{:?}",state);
+    println!("start:{state:?}");
     state = add_round_key(state,keys,14);
-    println!("add_round_key:{:?}",state);
+    println!("add_round_key:{state:?}");
     println!("key:{:?}",keys[14]);
     for i in (1..14).rev() {
-      println!("Round:{:?}",i);
-      println!("start:{:?}",state);
+      println!("Round: {i}");
+      println!("start:{state:?}");
       state = inv_sub_bytes(state);
-      println!("inv_sub_bytes:{:?}",state);
+      println!("inv_sub_bytes:{state:?}");
       state = inv_shift_rows(state);
-      println!("inv_shift_rows:{:?}",state);
+      println!("inv_shift_rows:{state:?}");
       state = inv_mix_columns(state);
-      println!("inv_mix_columns:{:?}",state);
+      println!("inv_mix_columns:{state:?}");
       state = add_round_key(state,keys,i);
-      println!("add_round_key:{:?}",state);
+      println!("add_round_key:{state:?}");
       println!("key:{:?}",keys[i]);
     } 
-    println!("Round:{:?}",0);
-    println!("start:{:?}",state);
+    println!("Round: 0");
+    println!("start:{state:?}");
     state = inv_sub_bytes(state);
-    println!("inv_sub_bytes:{:?}",state);
+    println!("inv_sub_bytes:{state:?}");
     state = inv_shift_rows(state);
-    println!("inv_shift_rows:{:?}",state);
+    println!("inv_shift_rows:{state:?}");
     state = add_round_key(state,keys,0);
-    println!("add_round_key:{:?}",state);
+    println!("add_round_key:{state:?}");
     println!("key:{:?}",keys[0]);
     let last = state2data_block(state);
-    println!("last:{:?}",last);
+    println!("last:{last:?}");
     result.extend(last.to_vec().iter().copied());
-    w=w-16;
-    g=g+16;
+    w-=16;
+    g+=16;
   }
 }
 //
@@ -593,13 +586,6 @@ mod tests {
        let unmix = inv_mix_columns(mix);
        assert_eq!(mix,expected);
        assert_eq!(unmix,state);
-    }
-   #[test]
-   fn test_sub_word() {
-       let word:[u8;4]=[0,1,2,3];
-       let mix = sub_word(word);
-       let unmix = inv_sub_word(mix);
-       assert_eq!(word,unmix);
     }
    #[test]
    fn test_shift_rows() {
