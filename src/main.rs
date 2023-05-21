@@ -421,43 +421,43 @@ fn aes_encrypt(mut input:Vec<u8>, z:[u8;32],size:usize) -> Vec<u8>{
        let x:u8 = 0x80;
        input.push(x);
    }
-   println!("key:{z:?}"); 
+   //println!("key:{z:?}"); 
    let keys=key_expansion(z,false);
-   println!("key_expansion:{keys:?}");
+   //println!("key_expansion:{keys:?}");
    let mut g = 0;
    loop {
      if w<16 { return result; }
-     println!("Round: 0");
+     //println!("Round: 0");
      block = input[g..(g+16)].try_into().unwrap(); // block of 16 bytes = 128 bits
-     println!("input:{block:?}");
+     //println!("input:{block:?}");
      let mut state = create_state(block); 
-     println!("start:{state:?}");
-     println!("keys:{:?}",keys[0]);     
+     //println!("start:{state:?}");
+     //println!("keys:{:?}",keys[0]);     
 
      state=add_round_key(state,keys,0);
-     println!("add_round_key:{state:?}");
+     //println!("add_round_key:{state:?}");
      for i in 1..14 {
-       println!("Round: {i}");
+       //println!("Round: {i}");
        state = sub_bytes(state);
-       println!("sub_bytes:{state:?}");
+       //println!("sub_bytes:{state:?}");
        state = shift_rows(state);
-       println!("shift_rows:{state:?}");
+       //println!("shift_rows:{state:?}");
        state = mix_columns(state);
-       println!("mix_columns:{state:?}");
+       //println!("mix_columns:{state:?}");
        state = add_round_key(state,keys,i);
-       println!("add_round_key:{state:?}");
-       println!("keys:{:?}",keys[i]);
+       //println!("add_round_key:{state:?}");
+       //println!("keys:{:?}",keys[i]);
      }
-     println!("Round: 14");
+     //println!("Round: 14");
      state = sub_bytes(state);
-     println!("sub_bytes:{state:?}");
+     //println!("sub_bytes:{state:?}");
      state = shift_rows(state);
-     println!("shift_rows:{state:?}");
+     //println!("shift_rows:{state:?}");
      state = add_round_key(state,keys,14);
-     println!("add_round_key:{state:?}");
-     println!("keys:{:?}",keys[14]);
+     //println!("add_round_key:{state:?}");
+     //println!("keys:{:?}",keys[14]);
      let last = state2data_block(state);
-     println!("last:{last:?}");
+     //println!("last:{last:?}");
      result.extend(last.to_vec().iter().copied());
      w-=16;
      g+=16;
@@ -473,44 +473,44 @@ fn aes_decrypt(mut input:Vec<u8>, z:[u8;32],size:usize) -> Vec<u8>{
        let x:u8 = 0x80;
        input.push(x);
   }
-  println!("key:{z:?}");
+  //println!("key:{z:?}");
   let keys = key_expansion(z,true);
-  println!("key_expansion:{keys:?}");
+  //println!("key_expansion:{keys:?}");
   let mut g = 0;
   loop {
     if w<16 { return result; }
-    println!("Round: 14");
+    //println!("Round: 14");
     block = input[g..(g+16)].try_into().unwrap(); // block of 16 bytes = 128 bits
-    println!("block:{block:?}");
+    //println!("block:{block:?}");
     let mut state = create_state(block);
-    println!("start:{state:?}");
+    //println!("start:{state:?}");
     state = add_round_key(state,keys,14);
-    println!("add_round_key:{state:?}");
-    println!("key:{:?}",keys[14]);
+    //println!("add_round_key:{state:?}");
+    //println!("key:{:?}",keys[14]);
     for i in (1..14).rev() {
-      println!("Round: {i}");
-      println!("start:{state:?}");
+      //println!("Round: {i}");
+      //println!("start:{state:?}");
       state = inv_sub_bytes(state);
-      println!("inv_sub_bytes:{state:?}");
+      //println!("inv_sub_bytes:{state:?}");
       state = inv_shift_rows(state);
-      println!("inv_shift_rows:{state:?}");
+      //println!("inv_shift_rows:{state:?}");
       state = inv_mix_columns(state);
-      println!("inv_mix_columns:{state:?}");
+      //println!("inv_mix_columns:{state:?}");
       state = add_round_key(state,keys,i);
-      println!("add_round_key:{state:?}");
-      println!("key:{:?}",keys[i]);
+      //println!("add_round_key:{state:?}");
+      //println!("key:{:?}",keys[i]);
     } 
-    println!("Round: 0");
-    println!("start:{state:?}");
+    //println!("Round: 0");
+    //println!("start:{state:?}");
     state = inv_sub_bytes(state);
-    println!("inv_sub_bytes:{state:?}");
+    //println!("inv_sub_bytes:{state:?}");
     state = inv_shift_rows(state);
-    println!("inv_shift_rows:{state:?}");
+    //println!("inv_shift_rows:{state:?}");
     state = add_round_key(state,keys,0);
-    println!("add_round_key:{state:?}");
-    println!("key:{:?}",keys[0]);
+    //println!("add_round_key:{state:?}");
+    //println!("key:{:?}",keys[0]);
     let last = state2data_block(state);
-    println!("last:{last:?}");
+    //println!("last:{last:?}");
     result.extend(last.to_vec().iter().copied());
     w-=16;
     g+=16;
