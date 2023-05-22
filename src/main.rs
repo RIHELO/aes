@@ -63,14 +63,14 @@ fn write_output_file(config: &Config, contents: Vec<u8>) {
 fn string2array(key: String) -> [u8;32]{
   let mut result:[u8;32]= [0; 32];
   let mut test: &mut[u8] = &mut result;
-  test.write(key.as_bytes()).unwrap(); 
+  test.write_all(key.as_bytes()).unwrap(); 
   result
 }
 //
 fn state2data_block(state:[[u8;4];4]) ->[u8;16] {
   let mut result:[u8;16]=[0;16];
   for (k, element) in state.iter().flat_map(|r| r.iter()).enumerate() {
-        result[k]=*element;
+        result[k] = *element;
  }
   result
 }
@@ -189,7 +189,7 @@ fn gmul(a:u8,b:u8) -> u8{
     if a==9 { return by9[b as usize]; }
     if a==11 { return by11[b as usize]; }
     if a==13 { return by13[b as usize]; }
-    if a==14 { return by14[b as usize]; } 
+    if a==14 { by14[b as usize] } 
     else {
       0 
     }
@@ -373,11 +373,11 @@ fn rot_word(w:[u8;4]) -> [u8; 4]{
 //
 fn create_state(data:[u8;16]) ->[[u8;4];4]{
    let mut state:[[u8; 4]; 4] = [[0; 4]; 4];
-   let mut counter = 0;
-   for row in 0..4 {
-     for col in 0..4 {
-       state[row][col]=data[counter];
-       counter+=1;
+   let mut r:usize = 0;
+   for (c, item) in data.into_iter().enumerate() {
+     state[r%4][c%4]=item;
+     if c%4==0 {
+       r+=1;
      }
    }
    state   
