@@ -292,50 +292,21 @@ fn inv_sub_bytes(state:[[u8; 4]; 4]) -> [[u8; 4]; 4] {
 //
 fn inv_shift_rows(state:[[u8;4];4]) -> [[u8; 4]; 4]{
     let mut result:[[u8; 4]; 4]=[[0;4];4];
-    result[0][0]=state[0][0];
-    result[1][0]=state[1][0];
-    result[2][0]=state[2][0];
-    result[3][0]=state[3][0];
-
-    result[0][1]=state[3][1];
-    result[1][1]=state[0][1];
-    result[2][1]=state[1][1];
-    result[3][1]=state[2][1];
-
-    result[0][2]=state[2][2];
-    result[1][2]=state[3][2];
-    result[2][2]=state[0][2];
-    result[3][2]=state[1][2];
-
-    result[0][3]=state[1][3];
-    result[1][3]=state[2][3];
-    result[2][3]=state[3][3];
-    result[3][3]=state[0][3];
+    let s_col:[usize; 16]=[0,1,2,3,3,0,1,2,2,3,0,1,1,2,3,0];
+    let row:[usize; 16]  =[0,0,0,0, 1,1,1,1, 2,2,2,2, 3,3,3,3];
+    for item in 0..16 {
+       result[item%4][row[item]]= state[s_col[item]][row[item]] ;
+    }
     result
 }
 //
 fn shift_rows(state:[[u8;4];4]) -> [[u8; 4]; 4]{
     let mut result:[[u8; 4]; 4]=[[0;4];4];
-    result[0][0]=state[0][0];
-    result[1][0]=state[1][0];
-    result[2][0]=state[2][0];
-    result[3][0]=state[3][0];
-
-    result[0][1]=state[1][1];
-    result[1][1]=state[2][1];
-    result[2][1]=state[3][1];
-    result[3][1]=state[0][1];
-
-    result[0][2]=state[2][2];
-    result[1][2]=state[3][2];
-    result[2][2]=state[0][2];
-    result[3][2]=state[1][2];
-    
-    result[0][3]=state[3][3];
-    result[1][3]=state[0][3];
-    result[2][3]=state[1][3];
-    result[3][3]=state[2][3];
-
+    let s_col:[usize; 16]=[0,1,2,3, 1,2,3,0, 2,3,0,1, 3,0,1,2];
+    let row:[usize; 16]  =[0,0,0,0, 1,1,1,1, 2,2,2,2, 3,3,3,3];
+    for item in 0..16 {
+       result[item%4][row[item]]= state[s_col[item]][row[item]] ;
+    }
     result
 }
 //
